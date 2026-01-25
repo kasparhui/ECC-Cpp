@@ -58,6 +58,10 @@ Fp Fp::operator/(const int other) const {
     return *this / Fp(other);
 }
 
+bool Fp::operator==(const Fp& other) const {
+    return value == other.value;
+}
+
 std::ostream& operator<<(std::ostream& os, const Fp& fp) {
     os << fp.value;
     return os;

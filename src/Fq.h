@@ -7,6 +7,8 @@ extern const std::vector<unsigned int> q_sub_2; // q - 2 for exponentiation as a
 struct Fq {
     std::vector<Fp> coeffs; // Coefficients of the polynomial representation
 
+    Fq();
+
     Fq(const std::vector<Fp>& c);
 
     Fq(const Fq &other);
@@ -23,9 +25,13 @@ struct Fq {
 
     Fq pow(const std::vector<unsigned int>& exp) const;
 
+    Fq pow(const unsigned int exp) const;
+
     Fq invert() const;
 
     Fq operator/(const Fq& other) const;
+
+    bool operator==(const Fq& other) const;
 };
 
 std::ostream& operator<<(std::ostream& os, const Fq& fq);

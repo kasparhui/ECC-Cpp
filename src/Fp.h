@@ -32,6 +32,8 @@ struct Fp {
 
     Fp operator/(const int other) const;
 
+    bool operator==(const Fp& other) const;
+
 };
 std::ostream& operator<<(std::ostream& os, const Fp& fp);
 

@@ -4,6 +4,8 @@ const int d = 46; // Degree of the field extension
 const std::vector<unsigned int> q_sub_2 = {0xB66A744B, 0xFCDBBC9B, 0x96BBF58B, 0x7AE788BB,
                                             0xFF979CA4, 0x4C7FA532, 0xAEEBC56D, 0xE1751A5F};
 
+Fq::Fq() : coeffs(std::vector<Fp>(d, Fp(0))) {}
+
 Fq::Fq(const std::vector<Fp>& coeffs) : coeffs(coeffs) {
     assert(coeffs.size() == d);
 }
@@ -58,6 +60,7 @@ Fq Fq::operator*(const int other) const {
 }
 
 Fq Fq::pow(const std::vector<unsigned int>& exp) const {
+    assert(!exp.empty());
     Fq result(std::vector<Fp>(d, Fp(0)));
     result.coeffs[0] = Fp(1); // Initialize result to 1
     Fq power = *this;
@@ -75,6 +78,21 @@ Fq Fq::pow(const std::vector<unsigned int>& exp) const {
     return result;
 }
 
+Fq Fq::pow(const unsigned int exp) const {
+    Fq result(std::vector<Fp>(d, Fp(0)));
+    result.coeffs[0] = Fp(1); // Initialize result to 1
+    Fq power = *this;
+    unsigned int e = exp;
+    while (e > 0) {
+        if (e & 1) {
+            result = result * power;
+        }
+        power = power * power;
+        e >>= 1;
+    }
+    return result;
+}
+
 Fq Fq::invert() const {
     // Using Fermat's little theorem: a^(q-2) mod q
     return this->pow(q_sub_2);
@@ -83,6 +101,15 @@ Fq Fq::invert() const {
 // using Fermat's little theorem for inversion
 Fq Fq::operator/(const Fq& other) const {
     return (*this) * other.invert();
+}
+
+bool Fq::operator==(const Fq& other) const {
+    for (int i = 0; i < d; ++i) {
+        if (!(coeffs[i] == other.coeffs[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 std::ostream& operator<<(std::ostream& os, const Fq& fq) {
