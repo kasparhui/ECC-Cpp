@@ -8,9 +8,13 @@ const std::vector<int> inv_list = {
     41, 20, 39, 28, 35, 31, 23, 46
 };
 
-Fp::Fp(const int v) : value(v % 47) {
+const int p = 47;
+
+Fp::Fp() : value(0) {}
+
+Fp::Fp(const int v) : value(v % p) {
     if (value < 0) {
-        value += 47;
+        value += p;
     }
 }
 
@@ -46,9 +50,7 @@ Fp Fp::operator*(const int other) const {
 
 Fp Fp::operator/(const Fp& other) const {
     int inv = inv_list[other.value];
-    if (inv == 0) {
-        throw std::runtime_error("Division by zero in Fp");
-    }
+    assert(inv != 0 && "Division by zero in Fp");
     return Fp(value * inv);
 }
 

@@ -1,12 +1,12 @@
 #include <iostream>
-#include "Fp.h"
+#include "Fq.h"
 
 int main() {
-    Fp a(35);
-    Fp b(43);
-    Fp c = a  / b;
-    std::cout << "5 / 10 mod 47 = " << c<< std::endl;
-    Fp d = c * b;
-    std::cout << " (5 / 10) * 10 mod 47 = " << d << std::endl;
+    std::vector<Fp> a_coeffs(46, Fp(1));
+    Fq a(a_coeffs);
+    std::vector<Fp> b_coeffs(46, Fp(2));
+    Fq b(b_coeffs);
+    Fq c = a + b;
+    std::cout << "a + b = " << c << std::endl;
     return 0;
 }
