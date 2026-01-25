@@ -1,6 +1,8 @@
 #include "Fq.h"
 
 const int d = 46; // Degree of the field extension
+const std::vector<unsigned int> q_sub_2 = {0xB66A744B, 0xFCDBBC9B, 0x96BBF58B, 0x7AE788BB,
+                                            0xFF979CA4, 0x4C7FA532, 0xAEEBC56D, 0xE1751A5F};
 
 Fq::Fq(const std::vector<Fp>& coeffs) : coeffs(coeffs) {
     assert(coeffs.size() == d);
@@ -54,9 +56,33 @@ Fq Fq::operator*(const int other) const {
     }
     return Fq(result_coeffs);
 }
-// unspecified division operator
+
+Fq Fq::pow(const std::vector<unsigned int>& exp) const {
+    Fq result(std::vector<Fp>(d, Fp(0)));
+    result.coeffs[0] = Fp(1); // Initialize result to 1
+    Fq power = *this;
+    // liste von hinten durchgehen
+    for (int idx = exp.size() - 1; idx >= 0; --idx) {
+        unsigned int e = exp[idx];
+        for (int bit = 0; bit < 32; ++bit) {
+            if (e & 1) {
+                result = result * power;
+            }
+            power = power * power;
+            e >>= 1;
+        }
+    }
+    return result;
+}
+
+Fq Fq::invert() const {
+    // Using Fermat's little theorem: a^(q-2) mod q
+    return this->pow(q_sub_2);
+}
+
+// using Fermat's little theorem for inversion
 Fq Fq::operator/(const Fq& other) const {
-    return *this;
+    return (*this) * other.invert();
 }
 
 std::ostream& operator<<(std::ostream& os, const Fq& fq) {
