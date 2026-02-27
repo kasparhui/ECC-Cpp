@@ -1,15 +1,20 @@
 #include "Fq.h"
 
-const int d = 46; // Degree of the field extension
-const std::array<unsigned int, 8> q_sub_2 = {0xB66A744B, 0xFCDBBC9B, 0x96BBF58B, 0x7AE788BB,
-                                            0xFF979CA4, 0x4C7FA532, 0xAEEBC56D, 0xE1751A5F};
-
 Fq::Fq(): coeffs{}{}
 
 Fq::Fq(const std::array<Fp, 46>& coeffs) : coeffs(coeffs) {
 }
 
 Fq::Fq(const Fq &other) : coeffs(other.coeffs) {}
+
+Fq::Fq(Fq&& other) noexcept : coeffs(std::move(other.coeffs)) {}
+
+Fq& Fq::operator=(Fq&& other) noexcept {
+    if (this != &other) {
+        coeffs = std::move(other.coeffs);
+    }
+    return *this;
+}
 
 void Fq::mod() {
     for (int i = 0; i < 46; ++i) {
@@ -22,7 +27,7 @@ Fq Fq::operator+(const Fq &other) const {
     for (int i = 0; i < 46; ++i) {
         result_coeffs[i] = coeffs[i] + other.coeffs[i];
     }
-    return Fq(result_coeffs);
+    return result_coeffs;
 }
 
 Fq Fq::operator-(const Fq& other) const {
@@ -30,7 +35,7 @@ Fq Fq::operator-(const Fq& other) const {
     for (int i = 0; i < 46; ++i) {
         result_coeffs[i] = coeffs[i] - other.coeffs[i];
     }
-    return Fq(result_coeffs);
+    return result_coeffs;
 }
 
 Fq Fq::operator-() const {
@@ -38,7 +43,7 @@ Fq Fq::operator-() const {
     for (int i = 0; i < 46; ++i) {
         result_coeffs[i] = -coeffs[i];
     }
-    return Fq(result_coeffs);
+    return result_coeffs;
 }
 
 Fq Fq::operator*(const Fq& other) const {
@@ -46,14 +51,15 @@ Fq Fq::operator*(const Fq& other) const {
     std::array<Fp, 46> result_coeffs{};
     for (int i = 0; i < 46; ++i) {
         for (int j = 0; j < 46; ++j) {
-            if (i + j >= 46) {
-                result_coeffs[(i + j) - 46] = result_coeffs[(i + j) - 46] - (coeffs[i] * other.coeffs[j]) * 2;
+            int idx = i + j;
+            if (idx >= 46) {
+                result_coeffs[(idx) - 46] = result_coeffs[(idx) - 46] - (coeffs[i] * other.coeffs[j]) * 2;
             } else {
-                result_coeffs[i + j] = result_coeffs[i + j] + (coeffs[i] * other.coeffs[j]);
+                result_coeffs[idx] = result_coeffs[idx] + (coeffs[i] * other.coeffs[j]);
             }
         }
     }
-    return Fq(result_coeffs);
+    return result_coeffs;
 }
 
 Fq Fq::operator*(const int other) const {
@@ -61,7 +67,7 @@ Fq Fq::operator*(const int other) const {
     for (int i = 0; i < 46; ++i) {
         result_coeffs[i] = coeffs[i] * other;
     }
-    return Fq(result_coeffs);
+    return result_coeffs;
 }
 
 Fq Fq::pow(const std::array<unsigned int, 8>& exp) const {
@@ -74,9 +80,9 @@ Fq Fq::pow(const std::array<unsigned int, 8>& exp) const {
         unsigned int e = exp[idx];
         for (int bit = 0; bit < 32; ++bit) {
             if (e & 1) {
-                result = result * power;
+                result = std::move(result) * power;
             }
-            power = power * power;
+            power = std::move(power) * power;
             e >>= 1;
         }
     }
@@ -109,7 +115,7 @@ Fq Fq::operator/(const Fq& other) const {
 }
 
 bool Fq::operator==(const Fq& other) const {
-    for (int i = 0; i < d; ++i) {
+    for (int i = 0; i < 46; ++i) {
         if (!(coeffs[i] == other.coeffs[i])) {
             return false;
         }

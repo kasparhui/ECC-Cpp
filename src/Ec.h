@@ -10,6 +10,12 @@ struct Point {
 
     Point(const Fq& x_coord, const Fq& y_coord);
 
+    Point(const Point &other);
+
+    Point(Point&& other) noexcept;
+
+    Point& operator=(Point&& other) noexcept;
+
     Point operator+(const Point& other) const;
 
     Point operator-() const;

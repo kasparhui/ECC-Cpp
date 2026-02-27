@@ -21,6 +21,22 @@ Point::Point() : is_infinity(true) {}
 
 Point::Point(const Fq& x_coord, const Fq& y_coord) : x(x_coord), y(y_coord), is_infinity(false) {}
 
+Point::Point(const Point &other) : x(other.x), y(other.y), is_infinity(other.is_infinity) {}
+
+Point::Point(Point&& other) noexcept : x(std::move(other.x)), y(std::move(other.y)), is_infinity(other.is_infinity) {
+    other.is_infinity = true; // Mark the moved-from object as infinity
+}
+
+Point& Point::operator=(Point&& other) noexcept {
+    if (this != &other) {
+        x = std::move(other.x);
+        y = std::move(other.y);
+        is_infinity = other.is_infinity;
+        other.is_infinity = true; // Mark the moved-from object as infinity
+    }
+    return *this;
+}
+
 Point Point::operator+(const Point& other) const {
     if (is_infinity) return other;
     if (other.is_infinity) return *this;

@@ -2,8 +2,16 @@
 #include <array>
 #include <cassert>
 
-extern const std::array<int, 47> inv_list;
-extern const int p;
+constexpr std::array<int, 47> inv_list = {
+    0, 1, 24, 16, 12, 19, 8, 27, 6, 21, 
+    33, 30, 4, 29, 37, 22, 3, 36, 34, 5, 
+    40, 9, 15, 45, 2, 32, 38, 7, 42, 13, 
+    11, 44, 25, 10, 18, 43, 17, 14, 26, 
+    41, 20, 39, 28, 35, 31, 23, 46
+};
+
+constexpr int p = 47;
+
 // A class representing an element in the finite field Fp with p = 47
 struct Fp {
     int value;
