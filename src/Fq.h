@@ -13,6 +13,8 @@ struct Fq {
 
     Fq(const Fq &other);
 
+    void mod();
+
     Fq operator+(const Fq &other) const;
 
     Fq operator-(const Fq& other) const;

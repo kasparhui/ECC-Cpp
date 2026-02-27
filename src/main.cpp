@@ -27,8 +27,13 @@ int main() {
         0x51D52358, 0x2D2B640A, 0x72A64822, 0x726C5FAB
     };
     std::cout << "P on curve: " << P.is_on_curve() << std::endl;
+    //track time
+    auto start = std::chrono::high_resolution_clock::now();
     Point R = P * scalar;
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Point scalar: " << R << std::endl;
     std::cout << "R on curve: " << R.is_on_curve() << std::endl;
+    std::cout << "Time taken: " << duration.count() / 1000<< " ms" << std::endl;
     return 0;
 }

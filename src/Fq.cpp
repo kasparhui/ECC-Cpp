@@ -12,6 +12,12 @@ Fq::Fq(const std::vector<Fp>& coeffs) : coeffs(coeffs) {
 
 Fq::Fq(const Fq &other) : coeffs(other.coeffs) {}
 
+void Fq::mod() {
+    for (int i = 0; i < d; ++i) {
+        coeffs[i].mod();
+    }
+}
+
 Fq Fq::operator+(const Fq &other) const {
     std::vector<Fp> result_coeffs(d);
     for (int i = 0; i < d; ++i) {

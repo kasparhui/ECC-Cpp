@@ -12,13 +12,18 @@ const int p = 47;
 
 Fp::Fp() : value(0) {}
 
-Fp::Fp(const int v) : value(v % p) {
+Fp::Fp(const int v) : value(v) {
+    mod();
+}
+
+Fp::Fp(const Fp& other) : value(other.value) {}
+
+void Fp::mod() {
+    value = value % p;
     if (value < 0) {
         value += p;
     }
 }
-
-Fp::Fp(const Fp& other) : value(other.value) {}
 
 Fp Fp::operator+(const Fp& other) const {
     return Fp(value + other.value);

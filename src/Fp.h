@@ -14,6 +14,8 @@ struct Fp {
 
     Fp(const Fp &other);
 
+    void mod();
+    
     Fp operator+(const Fp &other) const;
 
     Fp operator+(const int other) const;
