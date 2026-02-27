@@ -18,7 +18,7 @@ struct Point {
 
     Point operator*(int scalar) const;
 
-    Point operator*(const std::vector<unsigned int>& scalar) const;
+    Point operator*(const std::array<unsigned int, 8>& scalar) const;
 
     bool operator==(const Point& other) const;
 

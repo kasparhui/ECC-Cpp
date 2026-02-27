@@ -1,8 +1,8 @@
 #include <iostream>
-#include <vector>
+#include <array>
 #include <cassert>
 
-extern const std::vector<int> inv_list;
+extern const std::array<int, 47> inv_list;
 extern const int p;
 // A class representing an element in the finite field Fp with p = 47
 struct Fp {
@@ -15,7 +15,7 @@ struct Fp {
     Fp(const Fp &other);
 
     void mod();
-    
+
     Fp operator+(const Fp &other) const;
 
     Fp operator+(const int other) const;

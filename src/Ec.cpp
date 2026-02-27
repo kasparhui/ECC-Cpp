@@ -78,14 +78,14 @@ Point Point::operator*(int scalar) const {
     return result;
 }
 
-Point Point::operator*(const std::vector<unsigned int>& scalar) const {
+Point Point::operator*(const std::array<unsigned int, 8>& scalar) const {
     if (is_infinity) return *this;
     assert(!scalar.empty());
     // double-and-add algorithm for scalar multiplication with big integer
     Point result; // Point at infinity
     Point addend = *this;
 
-    for (int i = scalar.size()-1; i >= 0; --i) {
+    for (int i = 7; i >= 0; --i) {
         unsigned int part = scalar[i];
         for (int j = 0; j < 32; ++j) { // Assuming 32 bits per part
             if (part & 1) {

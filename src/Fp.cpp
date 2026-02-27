@@ -1,6 +1,6 @@
 #include "Fp.h"
 // Precomputed modular inverses for field Fp where p = 47
-const std::vector<int> inv_list = {
+const std::array<int, 47> inv_list = {
     0, 1, 24, 16, 12, 19, 8, 27, 6, 21, 
     33, 30, 4, 29, 37, 22, 3, 36, 34, 5, 
     40, 9, 15, 45, 2, 32, 38, 7, 42, 13, 

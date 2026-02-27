@@ -22,7 +22,7 @@ int main() {
 
 
     Point P(x, y);
-    std::vector<unsigned int> scalar = {
+    std::array<unsigned int, 8> scalar = {
         0xB66A744B, 0xFCDBBC9B, 0x96BBF58B, 0x7AE788BD,
         0x51D52358, 0x2D2B640A, 0x72A64822, 0x726C5FAB
     };

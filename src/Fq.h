@@ -1,15 +1,15 @@
 #include "Fp.h"
 
 extern const int d; // Degree of the field extension
-extern const std::vector<unsigned int> q_sub_2; // q - 2 for exponentiation as a vector of 8 32-bit words
+extern const std::array<unsigned int, 8> q_sub_2; // q - 2 for exponentiation as a vector of 8 32-bit words
 
 // A class representing an element in the finite field Fq with q = 47**46 with irreducible polynomial x^46 + 2
 struct Fq {
-    std::vector<Fp> coeffs; // Coefficients of the polynomial representation
+    std::array<Fp, 46> coeffs; // Coefficients of the polynomial representation
 
     Fq();
 
-    Fq(const std::vector<Fp>& c);
+    Fq(const std::array<Fp, 46>& c);
 
     Fq(const Fq &other);
 
@@ -25,7 +25,7 @@ struct Fq {
 
     Fq operator*(const int other) const;
 
-    Fq pow(const std::vector<unsigned int>& exp) const;
+    Fq pow(const std::array<unsigned int, 8>& exp) const;
 
     Fq pow(const unsigned int exp) const;
 
