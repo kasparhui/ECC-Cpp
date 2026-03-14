@@ -3,7 +3,9 @@
 #include <cassert>
 #include <cstdint>
 
-constexpr std::array<int, 47> inv_list = {
+constexpr int p = 47;
+
+constexpr std::array<int, p> inv_list = {
     0, 1, 24, 16, 12, 19, 8, 27, 6, 21, 
     33, 30, 4, 29, 37, 22, 3, 36, 34, 5, 
     40, 9, 15, 45, 2, 32, 38, 7, 42, 13, 
@@ -11,7 +13,29 @@ constexpr std::array<int, 47> inv_list = {
     41, 20, 39, 28, 35, 31, 23, 46
 };
 
-constexpr int p = 47;
+constexpr std::array<std::array<int, p>, p> make_add_table() {
+    std::array<std::array<int, p>, p> table{};
+
+    for (int i = 0; i < p; ++i)
+        for (int j = 0; j < p; ++j)
+            table[i][j] = (i + j) % p;
+
+    return table;
+}
+
+constexpr auto add_table = make_add_table();
+
+constexpr std::array<std::array<int, p>, p> make_sub_table() {
+    std::array<std::array<int, p>, p> table{};
+
+    for (int i = 0; i < p; ++i)
+        for (int j = 0; j < p; ++j)
+            table[i][j] = (i - j + p) % p;
+
+    return table;
+}
+
+constexpr auto sub_table = make_sub_table();
 
 constexpr std::array<std::array<int, p>, p> make_mul_table() {
     std::array<std::array<int, p>, p> table{};

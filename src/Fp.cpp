@@ -15,23 +15,23 @@ void Fp::mod() {
 }
 
 Fp Fp::operator+(const Fp& other) const {
-    return (value+other.value)>=p ? value + other.value - p : value + other.value;
+    return add_table[value][other.value];
 }
 
 Fp Fp::operator+(const int other) const {
-    return (value+other)>=p ? value + other - p : value + other;
+    return add_table[value][other];
 }
 
 Fp Fp::operator-(const Fp& other) const {
-    return (value>=other.value) ? value - other.value : p + value - other.value;
+    return sub_table[value][other.value];
 }
 
 Fp Fp::operator-(const int other) const {
-    return (value>=other) ? value - other : p + value - other;
+    return sub_table[value][other];
 }
 
 Fp Fp::operator-() const {
-    return (value != 0) ? p - value : 0;
+    return sub_table[0][value];
 }
 
 Fp Fp::operator*(const Fp& other) const {
