@@ -55,6 +55,6 @@ bool Fp::operator==(const Fp& other) const {
 }
 
 std::ostream& operator<<(std::ostream& os, const Fp& fp) {
-    os << fp.value;
+    os << int(fp.value);
     return os;
 }
