@@ -23,11 +23,11 @@ Fp Fp::operator+(const int other) const {
 }
 
 Fp Fp::operator-(const Fp& other) const {
-    return (value-other.value)<0 ? value - other.value + p : value - other.value;
+    return (value>=other.value) ? value - other.value : p + value - other.value;
 }
 
 Fp Fp::operator-(const int other) const {
-    return (value-other)<0 ? value - other + p : value - other;
+    return (value>=other) ? value - other : p + value - other;
 }
 
 Fp Fp::operator-() const {
@@ -35,19 +35,19 @@ Fp Fp::operator-() const {
 }
 
 Fp Fp::operator*(const Fp& other) const {
-    return mul_table[value * p + other.value];
+    return mul_table[value][other.value];
 }
 
 Fp Fp::operator*(const int other) const {
-    return mul_table[value * p + other];
+    return mul_table[value][other];
 }
 
 Fp Fp::operator/(const Fp& other) const {
-    return div_table[value * p + other.value];
+    return div_table[value][other.value];
 }
 
 Fp Fp::operator/(const int other) const {
-    return div_table[value * p + other];
+    return div_table[value][other];
 }
 
 bool Fp::operator==(const Fp& other) const {

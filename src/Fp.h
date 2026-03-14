@@ -1,6 +1,7 @@
 #include <iostream>
 #include <array>
 #include <cassert>
+#include <cstdint>
 
 constexpr std::array<int, 47> inv_list = {
     0, 1, 24, 16, 12, 19, 8, 27, 6, 21, 
@@ -12,12 +13,12 @@ constexpr std::array<int, 47> inv_list = {
 
 constexpr int p = 47;
 
-constexpr std::array<int, p * p> make_mul_table() {
-    std::array<int, p * p> table{};
+constexpr std::array<std::array<int, p>, p> make_mul_table() {
+    std::array<std::array<int, p>, p> table{};
 
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j)
-            table[i * p + j] = (i * j) % p;
+            table[i][j] = (i * j) % p;
 
     return table;
 }
@@ -25,12 +26,12 @@ constexpr std::array<int, p * p> make_mul_table() {
 constexpr auto mul_table = make_mul_table();
 
 // constexpr combining div by multiplication with the precomputed inverses
-constexpr std::array<int, p * p> make_div_table() {
-    std::array<int, p * p> table{};
+constexpr std::array<std::array<int, p>, p> make_div_table() {
+    std::array<std::array<int, p>, p> table{};
 
     for (int i = 0; i < p; ++i)
         for (int j = 0; j < p; ++j)
-            table[i * p + j] = (i * inv_list[j]) % p;
+            table[i][j] = (i * inv_list[j]) % p;
 
     return table;
 }
