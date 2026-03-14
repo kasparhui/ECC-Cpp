@@ -12,6 +12,31 @@ constexpr std::array<int, 47> inv_list = {
 
 constexpr int p = 47;
 
+constexpr std::array<int, p * p> make_mul_table() {
+    std::array<int, p * p> table{};
+
+    for (int i = 0; i < p; ++i)
+        for (int j = 0; j < p; ++j)
+            table[i * p + j] = (i * j) % p;
+
+    return table;
+}
+
+constexpr auto mul_table = make_mul_table();
+
+// constexpr combining div by multiplication with the precomputed inverses
+constexpr std::array<int, p * p> make_div_table() {
+    std::array<int, p * p> table{};
+
+    for (int i = 0; i < p; ++i)
+        for (int j = 0; j < p; ++j)
+            table[i * p + j] = (i * inv_list[j]) % p;
+
+    return table;
+}
+
+constexpr auto div_table = make_div_table();
+
 // A class representing an element in the finite field Fp with p = 47
 struct Fp {
     int value;

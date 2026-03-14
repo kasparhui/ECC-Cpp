@@ -3,7 +3,6 @@
 Fp::Fp() : value(0) {}
 
 Fp::Fp(const int v) : value(v) {
-    mod();
 }
 
 Fp::Fp(const Fp& other) : value(other.value) {}
@@ -16,39 +15,39 @@ void Fp::mod() {
 }
 
 Fp Fp::operator+(const Fp& other) const {
-    return value + other.value;
+    return (value+other.value)>=p ? value + other.value - p : value + other.value;
 }
 
 Fp Fp::operator+(const int other) const {
-    return this->value + other;
+    return (value+other)>=p ? value + other - p : value + other;
 }
 
 Fp Fp::operator-(const Fp& other) const {
-    return value - other.value;
+    return (value-other.value)<0 ? value - other.value + p : value - other.value;
 }
 
 Fp Fp::operator-(const int other) const {
-    return this->value - other;
+    return (value-other)<0 ? value - other + p : value - other;
 }
 
 Fp Fp::operator-() const {
-    return -this->value;
+    return (value != 0) ? p - value : 0;
 }
 
 Fp Fp::operator*(const Fp& other) const {
-    return value * other.value;
+    return mul_table[value * p + other.value];
 }
 
 Fp Fp::operator*(const int other) const {
-    return this->value * other;
+    return mul_table[value * p + other];
 }
 
 Fp Fp::operator/(const Fp& other) const {
-    return value * inv_list[other.value];
+    return div_table[value * p + other.value];
 }
 
 Fp Fp::operator/(const int other) const {
-    return this->value * inv_list[other];
+    return div_table[value * p + other];
 }
 
 bool Fp::operator==(const Fp& other) const {
