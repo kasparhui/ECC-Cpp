@@ -1,9 +1,16 @@
 #include "schoof.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <exception>
+#include <future>
+#include <iomanip>
 #include <iostream>
+#include <mutex>
+#include <sstream>
 #include <stdexcept>
+#include <thread>
 #include <utility>
 
 #include "DivisionPoly.h"
@@ -19,6 +26,14 @@ Poly curve_polynomial(const Fq& curve_a, const Fq& curve_b) {
 
 double seconds_since(const std::chrono::steady_clock::time_point start) {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+}
+
+// The progress line for one finished prime, e.g. "l =  73: t =  15   65.6 s"
+std::string prime_line(const int l, const int trace, const double seconds) {
+    std::ostringstream line;
+    line << "l = " << std::setw(3) << l << ": t = " << std::setw(3) << trace << "   " << std::fixed
+         << std::setprecision(1) << std::setw(5) << seconds << " s";
+    return line.str();
 }
 
 // The Frobenius map and its square on the torsion points, as polynomials
@@ -80,6 +95,12 @@ void combine(U256& trace, U256& modulus, const int rest, const int prime) {
 
 } // namespace
 
+void schoof_log(const std::string& line) {
+    static std::mutex mutex;
+    const std::lock_guard<std::mutex> lock(mutex);
+    std::cout << line << std::endl;
+}
+
 int trace_mod_2(const Fq& curve_a, const Fq& curve_b) {
     // t is even exactly if the curve has a point of order 2, i.e. a point
     // with y = 0, i.e. if x^3 + ax + b has a root in Fq. The roots in Fq of
@@ -95,31 +116,34 @@ int trace_mod_l(const Fq& curve_a, const Fq& curve_b, const int l, const Poly& d
     if (l < 3 || l % 2 == 0 || l == p) {
         throw std::invalid_argument("trace_mod_l: l must be an odd prime other than 47");
     }
-    const auto start = std::chrono::steady_clock::now();
     const U256 q = field_size();
     Modulus modulus(division_polynomial);
     const Poly curve = curve_polynomial(curve_a, curve_b);
 
-    // pi(x, y) = (x^q, y^q) and y^q = y * (y^2)^((q-1)/2) = y * curve^((q-1)/2)
+    // pi(x, y) = (x^q, y^q) and y^q = y * (y^2)^((q-1)/2) = y * curve^((q-1)/2).
+    // The two powers do not depend on each other, so y^q runs on a second
+    // thread while this one computes x^q.
     FrobeniusMaps frobenius;
     frobenius.once.is_infinity = false;
-    frobenius.once.x = modulus.pow(Poly::x(), q);
-    std::cout << "  l = " << l << ": x^q done after " << seconds_since(start) << " s" << std::endl;
-    frobenius.once.y = modulus.pow(curve, half(q));
-    std::cout << "  l = " << l << ": y^q done after " << seconds_since(start) << " s" << std::endl;
+    {
+        std::future<Poly> y_part = std::async(std::launch::async, [&]() { return modulus.pow(curve, half(q)); });
+        frobenius.once.x = modulus.pow(Poly::x(), q);
+        frobenius.once.y = y_part.get();
+    }
 
     // pi^2 is pi applied twice. The coefficients are in Fq and therefore not
     // changed by the q-th power, so for any polynomial g: g(x)^q = g(x^q).
     //   x^(q^2) = (x^q)^q               = pi_x(pi_x)
     //   y^(q^2) = (y * pi_y(x))^q       = y * pi_y(x) * pi_y(pi_x)
-    // This is much cheaper than two more exponentiations.
+    // This is much cheaper than two more exponentiations. The two
+    // substitutions share the powers of pi_x and again run side by side.
     {
         const Composer compose(modulus, frobenius.once.x);
         frobenius.twice.is_infinity = false;
+        std::future<Poly> y_part = std::async(std::launch::async, [&]() { return compose(frobenius.once.y); });
         frobenius.twice.x = compose(frobenius.once.x);
-        frobenius.twice.y = modulus.mul(compose(frobenius.once.y), frobenius.once.y);
+        frobenius.twice.y = modulus.mul(y_part.get(), frobenius.once.y);
     }
-    std::cout << "  l = " << l << ": pi^2 done after " << seconds_since(start) << " s, searching t" << std::endl;
 
     while (true) {
         try {
@@ -130,8 +154,6 @@ int trace_mod_l(const Fq& curve_a, const Fq& curve_b, const int l, const Poly& d
             // irreducible. The factor that was found describes a subset of
             // the torsion points, for which the same equation holds, so the
             // search is repeated modulo this smaller polynomial.
-            std::cout << "  l = " << l << ": continuing with a factor of degree " << found.factor.degree()
-                      << " after " << seconds_since(start) << " s" << std::endl;
             modulus = Modulus(found.factor);
             frobenius.once.x = modulus.reduce(frobenius.once.x);
             frobenius.once.y = modulus.reduce(frobenius.once.y);
@@ -142,8 +164,7 @@ int trace_mod_l(const Fq& curve_a, const Fq& curve_b, const int l, const Poly& d
 }
 
 std::vector<int> default_schoof_primes() {
-    return {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 53, 59, 61,
-            67, 71, 73, 79, 83, 89, 97, 101, 103, 107};
+    return {3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 53, 59, 61, 67, 71, 73};
 }
 
 SchoofResult combine_remainders(const std::vector<int>& primes, const std::vector<int>& remainders) {
@@ -190,30 +211,78 @@ SchoofResult combine_remainders(const std::vector<int>& primes, const std::vecto
     return result;
 }
 
-SchoofResult schoof(const Fq& curve_a, const Fq& curve_b, const std::vector<int>& odd_primes) {
-    std::vector<int> primes;
-    std::vector<int> remainders;
-
+SchoofResult schoof(const Fq& curve_a, const Fq& curve_b, const std::vector<int>& odd_primes,
+                    unsigned threads) {
     const auto start = std::chrono::steady_clock::now();
-    primes.push_back(2);
-    remainders.push_back(trace_mod_2(curve_a, curve_b));
-    std::cout << "l = 2: t = " << remainders.back() << " (mod 2), took " << seconds_since(start) << " s" << std::endl;
+    const int t2 = trace_mod_2(curve_a, curve_b);
+    schoof_log(prime_line(2, t2, seconds_since(start)));
 
-    if (!odd_primes.empty()) {
+    // Largest prime first: the large primes take by far the longest, so they
+    // should start right away instead of waiting behind the small ones.
+    std::vector<int> order = odd_primes;
+    std::sort(order.begin(), order.end(), [](const int first, const int second) { return first > second; });
+    std::vector<int> rests(order.size(), 0);
+
+    if (!order.empty()) {
         // The l-th division polynomial is built from those with index near l/2
-        const int largest = *std::max_element(odd_primes.begin(), odd_primes.end());
-        const DivisionPolynomials division_polynomials(curve_a, curve_b, largest / 2 + 2);
-        std::cout << "division polynomials done after " << seconds_since(start) << " s" << std::endl;
+        const DivisionPolynomials division_polynomials(curve_a, curve_b, order.front() / 2 + 2);
 
-        for (const int l : odd_primes) {
-            const auto prime_start = std::chrono::steady_clock::now();
-            const int rest = trace_mod_l(curve_a, curve_b, l, division_polynomials.odd(l));
-            primes.push_back(l);
-            remainders.push_back(rest);
-            std::cout << "l = " << l << ": t = " << rest << " (mod " << l << "), took "
-                      << seconds_since(prime_start) << " s (total " << seconds_since(start) << " s, "
-                      << primes.size() - 1 << " of " << odd_primes.size() << " odd primes done)" << std::endl;
+        if (threads == 0) {
+            threads = std::max(1u, std::thread::hardware_concurrency());
         }
+        threads = std::min<unsigned>(threads, static_cast<unsigned>(order.size()));
+        schoof_log("computing " + std::to_string(order.size()) + " odd primes on " + std::to_string(threads) +
+                   " threads, largest first");
+
+        std::atomic<std::size_t> next{0};      // index of the next prime nobody has taken yet
+        std::atomic<std::size_t> finished{0};
+        std::exception_ptr failure;
+        std::mutex failure_mutex;
+
+        // Each thread keeps taking the next prime until none are left
+        const auto worker = [&]() {
+            while (true) {
+                const std::size_t index = next.fetch_add(1);
+                if (index >= order.size()) {
+                    return;
+                }
+                const int l = order[index];
+                try {
+                    const auto prime_start = std::chrono::steady_clock::now();
+                    rests[index] = trace_mod_l(curve_a, curve_b, l, division_polynomials.odd(l));
+                    const double seconds = seconds_since(prime_start);
+                    schoof_log(prime_line(l, rests[index], seconds) + "   (" +
+                               std::to_string(finished.fetch_add(1) + 1) + " of " + std::to_string(order.size()) + ")");
+                } catch (...) {
+                    const std::lock_guard<std::mutex> lock(failure_mutex);
+                    if (!failure) {
+                        failure = std::current_exception();
+                    }
+                    next.store(order.size()); // let the other threads stop early
+                    return;
+                }
+            }
+        };
+
+        std::vector<std::thread> pool;
+        for (unsigned i = 1; i < threads; ++i) {
+            pool.emplace_back(worker);
+        }
+        worker(); // the calling thread works too
+        for (std::thread& thread : pool) {
+            thread.join();
+        }
+        if (failure) {
+            std::rethrow_exception(failure);
+        }
+    }
+
+    // Report the primes in increasing order, starting with 2
+    std::vector<int> primes = {2};
+    std::vector<int> remainders = {t2};
+    for (std::size_t i = order.size(); i-- > 0;) {
+        primes.push_back(order[i]);
+        remainders.push_back(rests[i]);
     }
     return combine_remainders(primes, remainders);
 }

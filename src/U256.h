@@ -126,3 +126,60 @@ inline std::string to_decimal(U256 value) {
     std::reverse(digits.begin(), digits.end());
     return digits;
 }
+
+// value *= factor for a 64-bit factor; returns false on overflow
+inline bool multiply64(U256& value, const std::uint64_t factor) {
+    U256 high_part = value;
+    const bool low_fits = multiply(value, static_cast<std::uint32_t>(factor));
+    // high_part = value * (factor >> 32) * 2^32
+    bool high_fits = multiply(high_part, static_cast<std::uint32_t>(factor >> 32));
+    if (high_part[7] != 0) {
+        high_fits = false;
+    }
+    for (int i = 7; i > 0; --i) {
+        high_part[i] = high_part[i - 1];
+    }
+    high_part[0] = 0;
+    const bool sum_fits = add(value, high_part);
+    return low_fits && high_fits && sum_fits;
+}
+
+// floor(numerator / denominator); the denominator must not be zero
+inline U256 quotient(const U256& numerator, const U256& denominator) {
+    U256 result{};
+    U256 rest{};
+    // binary long division, from the highest bit down
+    for (int index = 255; index >= 0; --index) {
+        // rest = rest * 2 + bit
+        for (int i = 7; i > 0; --i) {
+            rest[i] = (rest[i] << 1) | (rest[i - 1] >> 31);
+        }
+        rest[0] = (rest[0] << 1) | (get_bit(numerator, index) ? 1u : 0u);
+        if (compare(rest, denominator) >= 0) {
+            subtract(rest, denominator);
+            result[index / 32] |= 1u << (index % 32);
+        }
+    }
+    return result;
+}
+
+// True if the value fits in 64 bits
+inline bool fits_in_64_bits(const U256& value) {
+    for (int i = 2; i < 8; ++i) {
+        if (value[i] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+inline std::uint64_t to_uint64(const U256& value) {
+    return (static_cast<std::uint64_t>(value[1]) << 32) | value[0];
+}
+
+inline U256 from_uint64(const std::uint64_t small) {
+    U256 value{};
+    value[0] = static_cast<std::uint32_t>(small);
+    value[1] = static_cast<std::uint32_t>(small >> 32);
+    return value;
+}

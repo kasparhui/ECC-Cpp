@@ -2,34 +2,37 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "Ec.h"
+#include "OrderSearch.h"
 #include "schoof.h"
 
-// Runs Schoof's algorithm on the curve defined in Ec.cpp.
+// Counts the points of the curve defined in Ec.cpp.
 //
-//   ./schoof            uses all default primes (3 .. 107 without 47), which
-//                       is enough to determine the number of points
-//   ./schoof 3 5 7 11   uses only the given odd primes
+//   ./schoof              Schoof's algorithm for the default primes (3 .. 73
+//                         without 47), then a search for the exact order
+//   ./schoof 3 5 7 11     Schoof's algorithm for the given odd primes only;
+//                         prints the remainders of the trace
+//   ./schoof -j 4 ...     use 4 threads instead of one per CPU core
 int main(int argc, char** argv) {
     std::vector<int> primes;
+    unsigned threads = 0;
     for (int i = 1; i < argc; ++i) {
-        primes.push_back(std::atoi(argv[i]));
-    }
-    if (primes.empty()) {
-        primes = default_schoof_primes();
+        if (std::string(argv[i]) == "-j" && i + 1 < argc) {
+            threads = static_cast<unsigned>(std::atoi(argv[++i]));
+        } else {
+            primes.push_back(std::atoi(argv[i]));
+        }
     }
 
     const auto start = std::chrono::steady_clock::now();
-    const SchoofResult result = schoof(a, b, primes);
+    const SchoofResult result = primes.empty() ? count_points(default_schoof_primes(), threads)
+                                               : schoof(a, b, primes, threads);
     const double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 
-    std::cout << "\nRemainders of the trace t:\n";
-    for (std::size_t i = 0; i < result.primes.size(); ++i) {
-        std::cout << "  t = " << result.remainders[i] << " (mod " << result.primes[i] << ")\n";
-    }
-    std::cout << "Combined: t = " << to_decimal(result.trace_mod) << " (mod " << to_decimal(result.modulus) << ")\n";
+    std::cout << "\nt = " << to_decimal(result.trace_mod) << " (mod " << to_decimal(result.modulus) << ")\n";
 
     if (result.determined) {
         std::cout << "Trace: t = " << (result.trace_is_negative ? "-" : "") << to_decimal(result.trace_magnitude) << "\n";
@@ -41,8 +44,8 @@ int main(int argc, char** argv) {
         }
         std::cout << std::dec << "}\n";
     } else {
-        std::cout << "The product of the primes is not larger than 4*sqrt(q), so t itself is not determined yet.\n";
+        std::cout << "These primes alone do not determine t. Run without arguments for the full point count.\n";
     }
-    std::cout << "Time taken: " << seconds << " s" << std::endl;
+    std::cout << "Time taken: " << std::fixed << std::setprecision(1) << seconds << " s" << std::endl;
     return 0;
 }
