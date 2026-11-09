@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 #include "Ec.h"
 
@@ -34,6 +35,6 @@ int main() {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << "Point scalar: " << R << std::endl;
     std::cout << "R on curve: " << R.is_on_curve() << std::endl;
-    std::cout << "Time taken: " << duration.count() / 1000<< " ms" << std::endl;
+    std::cout << "Time taken: " << duration.count()<< " μs" << std::endl;
     return 0;
 }

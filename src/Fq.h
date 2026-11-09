@@ -1,26 +1,24 @@
+#pragma once
+
 #include "Fp.h"
 
 constexpr int d = 46; // Degree of the field extension
-constexpr std::array<unsigned int, 8> q_sub_2 = {0xB66A744B, 0xFCDBBC9B, 0x96BBF58B, 0x7AE788BB,
-                                            0xFF979CA4, 0x4C7FA532, 0xAEEBC56D, 0xE1751A5F};; // q - 2 for exponentiation as a vector of 8 32-bit words
 
-// A class representing an element in the finite field Fq with q = 47**46 with irreducible polynomial x^46 + 2
+// An element of the finite field Fq with q = 47^46, represented as a
+// polynomial of degree < 46 over Fp modulo the irreducible polynomial x^46 + 2
 struct Fq {
-    std::array<Fp, 46> coeffs; // Coefficients of the polynomial representation
+    std::array<Fp, d> coeffs{}; // coeffs[i] is the coefficient of x^i
 
-    Fq();
+    Fq() = default;
 
-    Fq(const std::array<Fp, 46>& c);
+    Fq(const std::array<Fp, d>& c);
 
-    Fq(const Fq &other);
+    // The element 1
+    static Fq one();
 
-    Fq(Fq&& other) noexcept;
+    bool is_zero() const;
 
-    Fq& operator=(Fq&& other) noexcept;
-
-    void mod();
-
-    Fq operator+(const Fq &other) const;
+    Fq operator+(const Fq& other) const;
 
     Fq operator-(const Fq& other) const;
 
@@ -30,10 +28,15 @@ struct Fq {
 
     Fq operator*(const int other) const;
 
+    // exp is a 256-bit number, most significant 32-bit word first
     Fq pow(const std::array<unsigned int, 8>& exp) const;
 
     Fq pow(const unsigned int exp) const;
 
+    // k-fold Frobenius map: computes (*this)^(47^k), for k >= 0
+    Fq frobenius(int k) const;
+
+    // Inverting zero is not defined; it returns zero
     Fq invert() const;
 
     Fq operator/(const Fq& other) const;

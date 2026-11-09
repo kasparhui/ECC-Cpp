@@ -1,5 +1,7 @@
 #include "Ec.h"
 
+#include <ostream>
+
 const Fq a = Fq({
     Fp(45), Fp(38), Fp(38), Fp(37), Fp(38), Fp(12), Fp(25), Fp(27),
     Fp(45), Fp(34), Fp(29), Fp(4), Fp(27), Fp(7), Fp(36), Fp(18),
@@ -17,59 +19,34 @@ const Fq b = Fq({
     Fp(26), Fp(46), Fp(22), Fp(5), Fp(40), Fp(29), Fp(10)
 });
 
-Point::Point() : is_infinity(true) {}
-
 Point::Point(const Fq& x_coord, const Fq& y_coord) : x(x_coord), y(y_coord), is_infinity(false) {}
-
-Point::Point(const Point &other) : x(other.x), y(other.y), is_infinity(other.is_infinity) {}
-
-Point::Point(Point&& other) noexcept : x(std::move(other.x)), y(std::move(other.y)), is_infinity(other.is_infinity) {
-    other.is_infinity = true; // Mark the moved-from object as infinity
-}
-
-Point& Point::operator=(Point&& other) noexcept {
-    if (this != &other) {
-        x = std::move(other.x);
-        y = std::move(other.y);
-        is_infinity = other.is_infinity;
-        other.is_infinity = true; // Mark the moved-from object as infinity
-    }
-    return *this;
-}
 
 Point Point::operator+(const Point& other) const {
     if (is_infinity) return other;
     if (other.is_infinity) return *this;
-    if(x == other.x){
-        if(y == -other.y){
-            return Point(); // Point at infinity
-        } else {
-            // Implement point doubling logic here
-            // Placeholder logic for point doubling
-            Fq slope = (x * x * 3 + a) / (y * 2);
-            Fq x3 = slope * slope - x*2;
-            Fq y3 = slope * (x - x3) - y;
-            return Point(x3, y3);
+
+    Fq slope;
+    if (x == other.x) {
+        if (y == -other.y) {
+            return Point(); // P + (-P) is the point at infinity
         }
-    }
-    else {
-        // Implement point addition logic here
-        // Placeholder logic for point addition
-        Fq slope = (other.y - y) / (other.x - x);
-        Fq x3 = slope * slope - x - other.x;
-        Fq y3 = slope * (x - x3) - y;
-        return Point(x3, y3);
+        // Same point: doubling, slope of the tangent
+        slope = (x * x * 3 + a) / (y * 2);
+    } else {
+        // Different points: slope of the line through both
+        slope = (other.y - y) / (other.x - x);
     }
 
-    
-    return Point();
+    Fq x3 = slope * slope - x - other.x;
+    Fq y3 = slope * (x - x3) - y;
+    return Point(x3, y3);
 }
 
 Point Point::operator-() const {
     if (is_infinity) return *this;
 
-    // Implement point negation logic here
-    return Point(-x, y);
+    // The negative of (x, y) is (x, -y)
+    return Point(x, -y);
 }
 
 Point Point::operator-(const Point& other) const {
@@ -96,19 +73,71 @@ Point Point::operator*(int scalar) const {
 
 Point Point::operator*(const std::array<unsigned int, 8>& scalar) const {
     if (is_infinity) return *this;
-    assert(!scalar.empty());
-    // double-and-add algorithm for scalar multiplication with big integer
-    Point result; // Point at infinity
-    Point addend = *this;
 
-    for (int i = 7; i >= 0; --i) {
-        unsigned int part = scalar[i];
-        for (int j = 0; j < 32; ++j) { // Assuming 32 bits per part
-            if (part & 1) {
-                result = result + addend;
+    // Windowed NAF (width 4) scalar multiplication.
+    // The scalar is rewritten with digits 0, +-1, +-3, +-5, +-7 such that any
+    // non-zero digit is followed by at least three zeros. Only about every
+    // 5th digit is non-zero, so far fewer additions are needed than with
+    // plain double-and-add. Negative digits are subtractions, which are as
+    // cheap as additions because negating a point is free.
+
+    // Copy the scalar, least significant word first (scalar[7] is the lowest
+    // word). One extra word catches a possible carry out of the top.
+    std::array<unsigned int, 9> k{};
+    for (int i = 0; i < 8; ++i) {
+        k[i] = scalar[7 - i];
+    }
+
+    std::array<int8_t, 258> digits{};
+    int digit_count = 0;
+    auto is_zero = [&k]() {
+        for (unsigned int word : k) {
+            if (word != 0) return false;
+        }
+        return true;
+    };
+    while (!is_zero()) {
+        int digit = 0;
+        if (k[0] & 1) {
+            digit = k[0] & 15;              // k mod 16
+            if (digit >= 8) digit -= 16;    // choose the digit in -7..7
+            // k -= digit, which makes k divisible by 16
+            if (digit > 0) {
+                k[0] -= digit;              // low bits are >= digit: no borrow
+            } else {
+                unsigned long long carry = static_cast<unsigned long long>(-digit);
+                for (int i = 0; i < 9 && carry != 0; ++i) {
+                    carry += k[i];
+                    k[i] = static_cast<unsigned int>(carry);
+                    carry >>= 32;
+                }
             }
-            addend = addend + addend;
-            part >>= 1;
+        }
+        digits[digit_count++] = static_cast<int8_t>(digit);
+        // k >>= 1
+        for (int i = 0; i < 8; ++i) {
+            k[i] = (k[i] >> 1) | (k[i + 1] << 31);
+        }
+        k[8] >>= 1;
+    }
+
+    // Odd multiples: multiples[n] = (2n + 1) * P, i.e. P, 3P, 5P, 7P
+    Point twice = *this + *this;
+    std::array<Point, 4> multiples;
+    multiples[0] = *this;
+    for (int n = 1; n < 4; ++n) {
+        multiples[n] = multiples[n - 1] + twice;
+    }
+
+    // Go from the most significant digit down: double, then add or subtract
+    Point result; // Point at infinity
+    for (int i = digit_count - 1; i >= 0; --i) {
+        result = result + result;
+        int digit = digits[i];
+        if (digit > 0) {
+            result = result + multiples[digit / 2];
+        } else if (digit < 0) {
+            result = result - multiples[(-digit) / 2];
         }
     }
 
